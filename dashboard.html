@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}Dashboard - Smart Greenhouse{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-speedometer2"></i> Dashboard</h3>
+    <span class="text-muted">Welcome, {{ user.first_name|default:user.username }}</span>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card p-3">
+            <div class="stat-label">Total Greenhouses</div>
+            <div class="stat-value">{{ total_greenhouses }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card danger p-3">
+            <div class="stat-label">Active Alerts</div>
+            <div class="stat-value text-danger">{{ total_alerts }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card info p-3">
+            <div class="stat-label">System Status</div>
+            <div class="stat-value text-success"><i class="bi bi-check-circle"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end mb-2">
+    <small class="text-muted"><i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
+        Auto-refresh every 30s — last update: <span id="last-refresh">just now</span>
+    </small>
+</div>
+
+<!-- Greenhouse Cards -->
+<div class="row g-4">
+    {% for item in greenhouse_data %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card gh-card h-100" data-greenhouse-id="{{ item.greenhouse.pk }}">
+            <div class="card-header bg-success bg-opacity-10 d-flex justify-content-between">
+                <h5 class="mb-0 text-success">
+                    <i class="bi bi-house-door"></i> {{ item.greenhouse.name }}
+                </h5>
+                {% if item.active_alerts > 0 %}
+                <span class="badge bg-danger">{{ item.active_alerts }} alert{{ item.active_alerts|pluralize }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if item.latest_reading %}
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="sensor-badge temp w-100">
+                            <i class="bi bi-thermometer-half"></i>
+                            <span data-metric="temperature">{{ item.latest_reading.temperature|floatformat:1 }}</span>°C
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="sensor-badge humidity w-100">
+                            <i class="bi bi-droplet"></i>
+                            <span data-metric="humidity">{{ item.latest_reading.humidity|floatformat:1 }}</span>%
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="sensor-badge soil w-100">
+                            <i class="bi bi-moisture"></i>
+                            <span data-metric="soil_moisture">{{ item.latest_reading.soil_moisture|floatformat:1 }}</span>%
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="sensor-badge light w-100">
+                            <i class="bi bi-sun"></i>
+                            <span data-metric="light_intensity">{{ item.latest_reading.light_intensity|floatformat:0 }}</span> lux
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted" data-updated>
+                    Last updated: {{ item.latest_reading.timestamp|naturaltime }}
+                </small>
+                {% else %}
+                <p class="text-muted text-center my-4">No sensor data yet</p>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <a href="{% url 'monitoring:greenhouse_detail' item.greenhouse.pk %}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-eye"></i> Details
+                </a>
+                <a href="{% url 'monitoring:history' item.greenhouse.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-clock-history"></i> History
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card gh-card p-5 text-center">
+            <i class="bi bi-house-add text-muted" style="font-size:3rem"></i>
+            <h5 class="mt-3">No Greenhouses Yet</h5>
+            <p class="text-muted">Use the admin panel to add your first greenhouse.</p>
+            <a href="/admin/monitoring/greenhouse/add/" class="btn btn-success">Add Greenhouse</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const REFRESH_MS = 30000;
+    const cards = document.querySelectorAll('[data-greenhouse-id]');
+    const lastRefreshEl = document.getElementById('last-refresh');
+    const iconEl = document.getElementById('refresh-icon');
+
+    function formatNumber(value, decimals) {
+        return Number(value).toFixed(decimals);
+    }
+
+    async function refreshCard(card) {
+        const id = card.getAttribute('data-greenhouse-id');
+        try {
+            const response = await fetch(`/api/sensor-data/${id}/?hours=1`, {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' },
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            const readings = payload.data || [];
+            if (!readings.length) return;
+            const latest = readings[readings.length - 1];
+            const map = {
+                temperature: 1,
+                humidity: 1,
+                soil_moisture: 1,
+                light_intensity: 0,
+            };
+            for (const [metric, decimals] of Object.entries(map)) {
+                const el = card.querySelector(`[data-metric="${metric}"]`);
+                if (el && latest[metric] !== undefined) {
+                    el.textContent = formatNumber(latest[metric], decimals);
+                }
+            }
+            const updatedEl = card.querySelector('[data-updated]');
+            if (updatedEl) {
+                updatedEl.textContent = 'Last updated: ' + new Date(latest.timestamp).toLocaleTimeString();
+            }
+        } catch (err) {
+            console.warn('Refresh failed for greenhouse', id, err);
+        }
+    }
+
+    async function refreshAll() {
+        iconEl?.classList.add('spin');
+        await Promise.all(Array.from(cards).map(refreshCard));
+        if (lastRefreshEl) lastRefreshEl.textContent = new Date().toLocaleTimeString();
+        setTimeout(() => iconEl?.classList.remove('spin'), 500);
+    }
+
+    setInterval(refreshAll, REFRESH_MS);
+})();
+</script>
+{% endblock %}

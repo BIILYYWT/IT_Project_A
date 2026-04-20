@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}History - {{ greenhouse.name }}{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'monitoring:dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'monitoring:greenhouse_detail' greenhouse.pk %}">{{ greenhouse.name }}</a></li>
+        <li class="breadcrumb-item active">History</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-clock-history"></i> Historical Data - {{ greenhouse.name }}</h3>
+    <div class="btn-group">
+        <a href="?days=1" class="btn btn-sm {% if days == 1 %}btn-success{% else %}btn-outline-success{% endif %}">1 Day</a>
+        <a href="?days=7" class="btn btn-sm {% if days == 7 %}btn-success{% else %}btn-outline-success{% endif %}">7 Days</a>
+        <a href="?days=30" class="btn btn-sm {% if days == 30 %}btn-success{% else %}btn-outline-success{% endif %}">30 Days</a>
+    </div>
+</div>
+
+<div class="card gh-card mb-4">
+    <div class="card-header"><h5 class="mb-0">Trend Chart ({{ days }} day{{ days|pluralize }})</h5></div>
+    <div class="card-body">
+        <canvas id="historyChart" height="150"></canvas>
+    </div>
+</div>
+
+<div class="card gh-card">
+    <div class="card-header"><h5 class="mb-0">Readings Table</h5></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-sm">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th><th>Temp (°C)</th><th>Humidity (%)</th>
+                        <th>Soil Moisture (%)</th><th>Light (lux)</th><th>CO2 (ppm)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in readings %}
+                    <tr>
+                        <td>{{ r.timestamp|date:"Y-m-d H:i" }}</td>
+                        <td>{{ r.temperature|floatformat:1 }}</td>
+                        <td>{{ r.humidity|floatformat:1 }}</td>
+                        <td>{{ r.soil_moisture|floatformat:1 }}</td>
+                        <td>{{ r.light_intensity|floatformat:0 }}</td>
+                        <td>{{ r.co2_level|floatformat:0 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted">No readings in this period.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/api/chart-data/{{ greenhouse.pk }}/?hours={{ hours }}')
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) return;
+        const d = res.data;
+        new Chart(document.getElementById('historyChart'), {
+            type: 'line',
+            data: {
+                labels: d.labels,
+                datasets: [
+                    {label:'Temperature',data:d.temperature,borderColor:'#dc3545',tension:0.3,fill:false},
+                    {label:'Humidity',data:d.humidity,borderColor:'#0d6efd',tension:0.3,fill:false},
+                    {label:'Soil Moisture',data:d.soil_moisture,borderColor:'#198754',tension:0.3,fill:false},
+                ]
+            },
+            options: {responsive:true}
+        });
+    });
+</script>
+{% endblock %}

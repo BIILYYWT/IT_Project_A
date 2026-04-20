@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% block title %}{{ greenhouse.name }} - Smart Greenhouse{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'monitoring:dashboard' %}">Dashboard</a></li>
+        <li class="breadcrumb-item active">{{ greenhouse.name }}</li>
+    </ol>
+</nav>
+
+<h3><i class="bi bi-house-door"></i> {{ greenhouse.name }}</h3>
+<p class="text-muted">{{ greenhouse.location }}</p>
+
+<!-- Current Readings -->
+<div class="row g-3 mb-4">
+    {% if latest %}
+    <div class="col-md-3 col-6">
+        <div class="card stat-card p-3 text-center">
+            <div class="stat-label"><i class="bi bi-thermometer-half"></i> Temperature</div>
+            <div class="stat-value">{{ latest.temperature|floatformat:1 }}°C</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card stat-card info p-3 text-center">
+            <div class="stat-label"><i class="bi bi-droplet"></i> Humidity</div>
+            <div class="stat-value">{{ latest.humidity|floatformat:1 }}%</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card stat-card p-3 text-center">
+            <div class="stat-label"><i class="bi bi-moisture"></i> Soil Moisture</div>
+            <div class="stat-value">{{ latest.soil_moisture|floatformat:1 }}%</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card stat-card warning p-3 text-center">
+            <div class="stat-label"><i class="bi bi-sun"></i> Light</div>
+            <div class="stat-value">{{ latest.light_intensity|floatformat:0 }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 24h Statistics -->
+<div class="card gh-card mb-4">
+    <div class="card-header"><h5 class="mb-0">24-Hour Statistics</h5></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead><tr><th>Metric</th><th>Average</th><th>Min</th><th>Max</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td>Temperature</td>
+                        <td>{{ stats.avg_temp|floatformat:1|default:"-" }}°C</td>
+                        <td>{{ stats.min_temp|floatformat:1|default:"-" }}°C</td>
+                        <td>{{ stats.max_temp|floatformat:1|default:"-" }}°C</td>
+                    </tr>
+                    <tr><td>Humidity</td><td>{{ stats.avg_humidity|floatformat:1|default:"-" }}%</td><td>-</td><td>-</td></tr>
+                    <tr><td>Soil Moisture</td><td>{{ stats.avg_soil|floatformat:1|default:"-" }}%</td><td>-</td><td>-</td></tr>
+                    <tr><td>Light Intensity</td><td>{{ stats.avg_light|floatformat:0|default:"-" }} lux</td><td>-</td><td>-</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Chart Area -->
+<div class="card gh-card mb-4">
+    <div class="card-header"><h5 class="mb-0">Sensor Data Chart (24h)</h5></div>
+    <div class="card-body">
+        <canvas id="sensorChart" height="120"></canvas>
+    </div>
+</div>
+
+<!-- Alert Rules -->
+<div class="card gh-card mb-4">
+    <div class="card-header d-flex justify-content-between">
+        <h5 class="mb-0">Alert Rules</h5>
+        <a href="{% url 'alerts:create_rule' %}" class="btn btn-sm btn-success">Add Rule</a>
+    </div>
+    <div class="card-body">
+        {% for rule in alert_rules %}
+        <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+            <span>
+                <strong>{{ rule.get_metric_display }}</strong>
+                {{ rule.get_condition_display }} {{ rule.threshold_value }}
+            </span>
+            <span class="badge bg-{{ rule.severity }}">{{ rule.get_severity_display }}</span>
+        </div>
+        {% empty %}
+        <p class="text-muted mb-0">No alert rules configured.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<a href="{% url 'monitoring:history' greenhouse.pk %}" class="btn btn-outline-primary">
+    <i class="bi bi-clock-history"></i> View Full History
+</a>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+fetch('/api/chart-data/{{ greenhouse.pk }}/?hours=24')
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) return;
+        const d = res.data;
+        new Chart(document.getElementById('sensorChart'), {
+            type: 'line',
+            data: {
+                labels: d.labels,
+                datasets: [
+                    {label:'Temperature (°C)',data:d.temperature,borderColor:'#dc3545',tension:0.3,fill:false},
+                    {label:'Humidity (%)',data:d.humidity,borderColor:'#0d6efd',tension:0.3,fill:false},
+                    {label:'Soil Moisture (%)',data:d.soil_moisture,borderColor:'#198754',tension:0.3,fill:false},
+                ]
+            },
+            options: {responsive:true, plugins:{legend:{position:'top'}}}
+        });
+    });
+</script>
+{% endblock %}
