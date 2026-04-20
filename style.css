@@ -1,0 +1,129 @@
+/* Smart Greenhouse Monitoring System - Main Stylesheet */
+
+:root {
+    --gh-green: #198754;
+    --gh-green-light: #d1e7dd;
+    --gh-danger: #dc3545;
+    --gh-warning: #ffc107;
+    --gh-info: #0dcaf0;
+}
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Dashboard Cards */
+.gh-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.gh-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.stat-card {
+    border-left: 4px solid var(--gh-green);
+    border-radius: 8px;
+}
+
+.stat-card.danger { border-left-color: var(--gh-danger); }
+.stat-card.warning { border-left-color: var(--gh-warning); }
+.stat-card.info { border-left-color: var(--gh-info); }
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Sensor Indicators */
+.sensor-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.sensor-badge.temp { background: #fff3cd; color: #856404; }
+.sensor-badge.humidity { background: #cce5ff; color: #004085; }
+.sensor-badge.soil { background: #d4edda; color: #155724; }
+.sensor-badge.light { background: #fff3cd; color: #856404; }
+
+/* Device Toggle */
+.device-card {
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.device-on { border-left: 4px solid var(--gh-green); }
+.device-off { border-left: 4px solid #adb5bd; }
+
+/* Alert Severity */
+.severity-critical { color: #dc3545; font-weight: bold; }
+.severity-high { color: #fd7e14; font-weight: bold; }
+.severity-medium { color: #ffc107; }
+.severity-low { color: #0dcaf0; }
+
+/* Auth Pages */
+.auth-container {
+    max-width: 420px;
+    margin: 80px auto;
+}
+
+.auth-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+
+/* Responsive Table */
+.table-responsive { border-radius: 8px; }
+
+/* Auto-refresh spinner */
+@keyframes gh-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.spin { display: inline-block; animation: gh-spin 0.6s linear; }
+
+/* Mobile (≤576px) */
+@media (max-width: 576px) {
+    .stat-value { font-size: 1.5rem; }
+    .stat-card { padding: 0.75rem !important; }
+    .sensor-badge { font-size: 0.78rem; padding: 4px 8px; }
+    .gh-card .card-header h5 { font-size: 1rem; }
+    .gh-card .card-footer .btn { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+    main.container-fluid { padding-left: 0.75rem; padding-right: 0.75rem; }
+    h3 { font-size: 1.25rem; }
+    .navbar-brand { font-size: 1rem; }
+    .auth-container { margin: 24px auto; max-width: 92%; }
+    .table thead { display: none; }
+    .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+    .table tr { margin-bottom: 0.75rem; border: 1px solid #e9ecef; border-radius: 8px; padding: 0.5rem; }
+    .table td { border: none; padding: 0.25rem 0.5rem; }
+    .table td::before { content: attr(data-label) ": "; font-weight: 600; color: #6c757d; }
+}
+
+/* Tablet (577-992px) */
+@media (min-width: 577px) and (max-width: 992px) {
+    .stat-value { font-size: 1.75rem; }
+    .gh-card .card-footer .btn { padding: 0.3rem 0.6rem; }
+}
+
+/* Touch-friendly tap targets on small screens */
+@media (max-width: 768px) {
+    .btn, .nav-link, .dropdown-item { min-height: 40px; display: flex; align-items: center; }
+    .form-control, .form-select { min-height: 42px; }
+}

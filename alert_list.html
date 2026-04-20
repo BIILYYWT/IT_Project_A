@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Alerts - Smart Greenhouse{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="bi bi-bell"></i> Alert Management</h3>
+    <a href="{% url 'alerts:create_rule' %}" class="btn btn-success"><i class="bi bi-plus-lg"></i> New Rule</a>
+</div>
+
+<!-- Active Alerts -->
+{% if active_alerts %}
+<div class="card gh-card mb-4">
+    <div class="card-header bg-danger bg-opacity-10">
+        <h5 class="mb-0 text-danger"><i class="bi bi-exclamation-triangle"></i> Active Alerts ({{ active_alerts|length }})</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Greenhouse</th><th>Message</th><th>Value</th><th>Time</th><th>Action</th></tr></thead>
+                <tbody>
+                {% for alert in active_alerts %}
+                <tr>
+                    <td>{{ alert.greenhouse.name }}</td>
+                    <td>{{ alert.message }}</td>
+                    <td><strong>{{ alert.triggered_value|floatformat:1 }}</strong></td>
+                    <td>{{ alert.created_at|date:"M d, H:i" }}</td>
+                    <td>
+                        <form method="post" action="{% url 'alerts:resolve_alert' alert.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-success">Resolve</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Alert Rules -->
+<div class="card gh-card mb-4">
+    <div class="card-header"><h5 class="mb-0">Alert Rules</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Greenhouse</th><th>Metric</th><th>Condition</th><th>Threshold</th><th>Severity</th><th>Actions</th></tr></thead>
+                <tbody>
+                {% for rule in rules %}
+                <tr>
+                    <td>{{ rule.greenhouse.name }}</td>
+                    <td>{{ rule.get_metric_display }}</td>
+                    <td>{{ rule.get_condition_display }}</td>
+                    <td>{{ rule.threshold_value }}</td>
+                    <td><span class="severity-{{ rule.severity }}">{{ rule.get_severity_display }}</span></td>
+                    <td>
+                        <form method="post" action="{% url 'alerts:delete_rule' rule.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this rule?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-3">No alert rules configured.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Resolved Alerts -->
+{% if resolved_alerts %}
+<div class="card gh-card">
+    <div class="card-header"><h5 class="mb-0">Recently Resolved</h5></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>Greenhouse</th><th>Message</th><th>Resolved At</th><th>Resolved By</th></tr></thead>
+                <tbody>
+                {% for alert in resolved_alerts %}
+                <tr class="text-muted">
+                    <td>{{ alert.greenhouse.name }}</td>
+                    <td>{{ alert.message }}</td>
+                    <td>{{ alert.resolved_at|date:"M d, H:i" }}</td>
+                    <td>{{ alert.resolved_by|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
